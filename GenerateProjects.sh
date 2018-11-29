@@ -1,0 +1,1 @@
+./vendor/premake5/premake5 gmake
