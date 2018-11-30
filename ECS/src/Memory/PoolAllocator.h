@@ -96,7 +96,7 @@ private:
         uintptr_t byte_address = reinterpret_cast<uintptr_t>(object_ptr) >> 2; // divide by 4, because it is 4 byte based address
         
         // TODO: Need to treat platform endianess (MAYBE?)
-        uintptr_t free_index = abs(byte_address - pool_address);
+        uintptr_t free_index = (byte_address - pool_address);
         mFreeList.emplace_back(free_index, sizeof(Type));
 
         // call destructor

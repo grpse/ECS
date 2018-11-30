@@ -1,4 +1,5 @@
 #pragma once
+#include <utility>
 
 class BaseComponent {
 
@@ -14,7 +15,12 @@ private:
 
 public:
 
-    Component() {
+    template <typename... Args>
+    Component(Args&&... args) : mData(std::forward<Args>(args)...) {
+        
+    } 
+
+    Component() : mData() {
 
     }
 

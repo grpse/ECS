@@ -8,18 +8,12 @@
 #include "ScopedLock.h"
 #include "Memory/PoolFactory.h"
 #include "Memory/PoolAllocator.h"
-
-#define POOLS_TOTAL_SIZE 65536
+#include "ECSDefinitions.h"
 
 template <typename CompType>
 class Component;
 
 class ComponentManager {
-
-private:
-    typedef size_t ComponentMemoryAddress;
-    typedef size_t EntityId;
-    typedef size_t ComponentTypeId;
 
 public:
 
@@ -36,10 +30,10 @@ public:
 
         // Get the right pool allocator for components creation
         ComponentTypeId componentTypeId = GetComponentTypeId<CompType>();
-        PoolAllocator* pool = GetRightPoolAllocator<CompType>();
+        auto pool = GetRightPoolAllocator<CompType>();
 
         // Create components
-        std::shared_ptr<BaseComponent> component = pool->create< Component<CompType> >(std::forward<TypeArgs>(args)...);
+        std::shared_ptr<BaseComponent> component = pool->template create< Component<CompType> >(std::forward<TypeArgs>(args)...);
 
         // Save their references
         mEntityIdComponents[entityId] = component;
@@ -56,10 +50,10 @@ public:
 
         // Get the right pool allocator for components creation
         ComponentTypeId componentTypeId = GetComponentTypeId<CompType>();
-        PoolAllocator* pool = GetRightPoolAllocator<CompType>();
+        auto pool = GetRightPoolAllocator<CompType>();
 
         // Create components
-        std::shared_ptr<BaseComponent> component = pool->create< Component<CompType> >();
+        std::shared_ptr<BaseComponent> component = pool->template create< Component<CompType> >();
 
         // Save their references
         mEntityIdComponents[entityId] = component;
@@ -108,7 +102,8 @@ public:
 
 private:
 
-    std::map<ComponentTypeId, PoolAllocator*> mComponentPools;
+    std::set<ComponentTypeId> mComponentPoolExistantSet;
+    std::map<ComponentTypeId, PoolAllocator* > mComponentPools;
     std::map<EntityId, ComponentTypeId > mEntityIdComponentsTypeId;
     std::map<EntityId, std::shared_ptr<BaseComponent> > mEntityIdComponents;
     std::map<ComponentTypeId, std::set<EntityId> > mComponentTypeIdEntitys;
@@ -117,16 +112,15 @@ private:
 
     template <typename CompType>
     PoolAllocator* GetRightPoolAllocator() {
-        PoolAllocator* pool = nullptr;
         ComponentTypeId componentTypeId = GetComponentTypeId<CompType>();
         if (IsComponentPoolNotExistent(componentTypeId)) {
-            mComponentPools[componentTypeId] = mPoolFactory->createPool< Component<CompType> >(4096);
+            mComponentPools[componentTypeId] = mPoolFactory->createPool(sizeof(CompType), 4096);
+            mComponentPoolExistantSet.insert(componentTypeId);
         }
-        pool = mComponentPools[componentTypeId];
-        return pool;
+        return mComponentPools[componentTypeId];
     }
 
     bool IsComponentPoolNotExistent(ComponentTypeId componentTypeId) {
-        return mComponentPools.find(componentTypeId) == mComponentPools.end();
+        return mComponentPoolExistantSet.count(componentTypeId) <= 0;
     }
 };

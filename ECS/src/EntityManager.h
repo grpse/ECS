@@ -1,22 +1,23 @@
 #pragma once
 
 #include <vector>
-#include <map>
+#include <set>
 #include <utility>
-#include "Entity.h"
+#include "EntityBase.h"
 #include "ComponentManager.h"
 #include "ServiceLocator.h"
 #include "ScopedLock.h"
+#include "ECSDefinitions.h"
+
+//class Entity;
 
 class ComponentManager;
-
-class Entity;
 
 class EntityManager {
 
 private:
-    std::map<size_t, Entity> mEntities;
-    int nextId;
+    std::map<EntityId, EntityBase> mEntities;
+    EntityId nextId;
     ComponentManager* mComponentManager;
     PoolFactory* mPoolFactory;
 
@@ -32,35 +33,33 @@ public:
         delete mPoolFactory;
     }
     
-    inline Entity* New() {
+    inline EntityBase* New() {
 
         SCOPED_LOCK;
 
-        int currentId = nextId++;
-        mEntities.emplace(std::make_pair(currentId, currentId));
+        EntityId currentId = nextId++;
+        mEntities[currentId] = { currentId, this };
         return &mEntities[currentId];
     }
 
-    inline void Remove(long entityId) {
+    inline void Remove(EntityId entityId) {
         
         SCOPED_LOCK;
-
-        auto entityIterator = mEntities.find(entityId);
-        mEntities.erase(entityIterator);
+        mEntities.erase(entityId);
     }
 
     template <typename CompType, typename... TypeArgs>
-    inline CompType* AttachComponent(long entityId, TypeArgs&&... args) {
+    inline CompType* AttachComponent(EntityId entityId, TypeArgs&&... args) {
         return mComponentManager->AttachToEntity<CompType>(entityId, std::forward<TypeArgs>(args)...);
     }
 
     template <typename CompType>
-    inline CompType* AttachComponent(long entityId) {
+    inline CompType* AttachComponent(EntityId entityId) {
         return mComponentManager->AttachToEntity<CompType>(entityId);
     }
 
     template <typename CompType>
-    inline CompType* GetComponent(long entityId) {
+    inline CompType* GetComponent(EntityId entityId) {
         return mComponentManager->GetComponentForEntityId<CompType>(entityId);
     }
 };
