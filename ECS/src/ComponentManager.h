@@ -4,6 +4,8 @@
 #include <map>
 #include <set>
 #include <utility>
+#include <typeinfo>
+#include <typeindex>
 #include "Component.h"
 #include "ScopedLock.h"
 #include "Memory/PoolFactory.h"
@@ -97,13 +99,13 @@ public:
 
     template <typename CompType>
     inline static CompType* StaticCastComponentType(std::shared_ptr<BaseComponent>& component) {
-        return reinterpret_cast< Component<CompType>* >(&*component)->data();
+        return static_cast< Component<CompType>* >(&*component)->data();
     }
 
 private:
 
-    std::set<ComponentTypeId> mComponentPoolExistantSet;
-    std::map<ComponentTypeId, PoolAllocator* > mComponentPools;
+    std::set<std::type_index> mComponentPoolExistantSet;
+    std::map<std::type_index, PoolAllocator* > mComponentPools;
     std::map<EntityId, ComponentTypeId > mEntityIdComponentsTypeId;
     std::map<EntityId, std::shared_ptr<BaseComponent> > mEntityIdComponents;
     std::map<ComponentTypeId, std::set<EntityId> > mComponentTypeIdEntitys;
@@ -112,15 +114,18 @@ private:
 
     template <typename CompType>
     PoolAllocator* GetRightPoolAllocator() {
-        ComponentTypeId componentTypeId = GetComponentTypeId<CompType>();
-        if (IsComponentPoolNotExistent(componentTypeId)) {
-            mComponentPools[componentTypeId] = mPoolFactory->createPool(sizeof(CompType), 4096);
-            mComponentPoolExistantSet.insert(componentTypeId);
+        //ComponentTypeId componentTypeId = GetComponentTypeId<CompType>();
+        
+        auto componentTypeIndex = std::type_index(typeid(CompType));
+
+        if (IsComponentPoolNotExistent(componentTypeIndex)) {
+            mComponentPools[componentTypeIndex] = mPoolFactory->createPool<CompType>(128);
+            mComponentPoolExistantSet.insert(componentTypeIndex);
         }
-        return mComponentPools[componentTypeId];
+        return mComponentPools[componentTypeIndex];
     }
 
-    bool IsComponentPoolNotExistent(ComponentTypeId componentTypeId) {
+    bool IsComponentPoolNotExistent(std::type_index componentTypeId) {
         return mComponentPoolExistantSet.count(componentTypeId) <= 0;
     }
 };

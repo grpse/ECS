@@ -31,10 +31,16 @@ public:
     TestData(float asd, int qwe) {
         x = asd;
         mData2 = qwe;
+        std::cout << "TestData(float,int)\n";
     }
 
     TestData() {
         x = mData2 = 1;
+        std::cout << "TestData()\n";
+    }
+
+    ~TestData() {
+        std::cout << "~TestData()\n";
     }
 
     void print() {
@@ -55,18 +61,19 @@ int main() {
     entity1->AttachComponent<TestData>(123.123, 123);
     entity2->AttachComponent<DataHolder>();
 
-    auto c1 = entity1->GetComponent<TestData>();
-    auto c2 = entity2->GetComponent<DataHolder>();
+    //auto c1 = entity1->GetComponent<TestData>();
+    //auto c2 = entity2->GetComponent<DataHolder>();
 
-    c1->x = 123.456f;
-    c2->x = 456.123f;
+    //c1->x = 123.456f;
+    //c2->x = 456.123f;
 
 
-    std::clog << "c1->x = " << c1->x << "\n";
-    std::clog << "c2->x = " << c2->x << "\n";
+    //std::clog << "c1->x = " << c1->x << "\n";
+    //std::clog << "c2->x = " << c2->x << "\n";
 
     entity1->AttachComponent<TestD>();
-    entity2->AttachComponent<TestD>();
+    //entity2->AttachComponent<TestD>();
+    std::clog << "test\n";
 
     
 
@@ -104,8 +111,8 @@ int main() {
     //     ci2->x = 1235675;
     // }
 
-    std::clog << "c1->x = " << c1->x << "\n";
-    std::clog << "c2->x = " << c2->x << "\n";
+    //std::clog << "c1->x = " << c1->x << "\n";
+    //std::clog << "c2->x = " << c2->x << "\n";
 
     return 0;
 }

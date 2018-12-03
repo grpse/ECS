@@ -18,8 +18,9 @@ public:
         delete mBlock;
     }
 
-    PoolAllocator* createPool(size_t elementSize, size_t nElements) {
-        size_t blockSize = nElements * elementSize;
+    template <typename Type>
+    PoolAllocator* createPool(size_t nElements) {
+        size_t blockSize = nElements * sizeof(Type);
         byte* blockPoolStartPtr = &mBlock[mBlockIndex];
         mBlockIndex = blockSize;
         mCreatedPools.emplace_back(blockPoolStartPtr, blockSize);

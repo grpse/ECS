@@ -24,7 +24,7 @@ private:
 public:
     EntityManager() {
         nextId = 0;
-        mPoolFactory = new PoolFactory(65536);
+        mPoolFactory = new PoolFactory(1048576);
         mComponentManager = new ComponentManager(mPoolFactory);
     }
 
@@ -37,7 +37,7 @@ public:
 
         SCOPED_LOCK;
 
-        EntityId currentId = nextId++;
+        EntityId currentId = ++nextId;
         mEntities[currentId] = { currentId, this };
         return &mEntities[currentId];
     }
