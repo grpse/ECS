@@ -55,8 +55,8 @@ struct TestD {
 int main() {
     
     auto entityManager = ServiceLocator::get<EntityManager>();
-    auto entity1 = static_cast<Entity*>(entityManager->New());
-    auto entity2 = static_cast<Entity*>(entityManager->New());
+    auto entity1 = entityManager->New();
+    auto entity2 = entityManager->New();
 
     entity1->AttachComponent<TestData>(123.123, 123);
     entity2->AttachComponent<DataHolder>();
@@ -72,7 +72,7 @@ int main() {
     //std::clog << "c2->x = " << c2->x << "\n";
 
     entity1->AttachComponent<TestD>();
-    //entity2->AttachComponent<TestD>();
+    entity2->AttachComponent<TestD>();
     std::clog << "test\n";
 
     

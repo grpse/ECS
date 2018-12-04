@@ -11,11 +11,15 @@
 #include "Memory/PoolFactory.h"
 #include "Memory/PoolAllocator.h"
 #include "ECSDefinitions.h"
+#include "Identifier.h"
 
 template <typename CompType>
 class Component;
 
 class ComponentManager {
+
+private:
+    typedef std::pair<EntityId, ComponentTypeId> EntityIdComponentTypeKeyType; 
 
 public:
 
@@ -26,7 +30,7 @@ public:
     virtual ~ComponentManager() { }
 
     template <typename CompType, typename... TypeArgs>
-    inline CompType* AttachToEntity(size_t entityId, TypeArgs&&... args) {
+    inline CompType* AttachToEntity(Identifier entityId, TypeArgs&&... args) {
         
         SCOPED_LOCK;
 
@@ -38,7 +42,8 @@ public:
         std::shared_ptr<BaseComponent> component = pool->template create< Component<CompType> >(std::forward<TypeArgs>(args)...);
 
         // Save their references
-        mEntityIdComponents[entityId] = component;
+        EntityIdComponentTypeKeyType key = {entityId, componentTypeId};
+        mEntityIdComponents[key] = component;
         mComponentTypeIdEntitys[componentTypeId].insert(entityId);
         mEntityIdComponentsTypeId[entityId] = componentTypeId;
         
@@ -46,7 +51,7 @@ public:
     }
 
     template <typename CompType>
-    inline CompType* AttachToEntity(size_t entityId) {
+    inline CompType* AttachToEntity(Identifier entityId) {
         
         SCOPED_LOCK;
 
@@ -58,21 +63,23 @@ public:
         std::shared_ptr<BaseComponent> component = pool->template create< Component<CompType> >();
 
         // Save their references
-        mEntityIdComponents[entityId] = component;
+        EntityIdComponentTypeKeyType key = {entityId, componentTypeId};
+        mEntityIdComponents[key] = component;
         mComponentTypeIdEntitys[componentTypeId].insert(entityId);
         mEntityIdComponentsTypeId[entityId] = componentTypeId;
         
         return ComponentManager::StaticCastComponentType<CompType>(component);
     }
 
-    inline void DetachFromEntity(size_t entityId) {
+    inline void DetachFromEntity(Identifier entityId) {
 
         SCOPED_LOCK;
 
         // get the iterators and delete
         ComponentTypeId componentTypeId = mEntityIdComponentsTypeId[entityId];
+        EntityIdComponentTypeKeyType key = {entityId, componentTypeId};
         mComponentTypeIdEntitys[componentTypeId].erase(entityId);
-        mEntityIdComponents.erase(entityId);
+        mEntityIdComponents.erase(key);
     }    
 
     template <typename CompType>
@@ -87,13 +94,14 @@ public:
     inline CompType* GetComponentForEntityId(size_t entityId) {
         
         SCOPED_LOCK;
-
-        return ComponentManager::StaticCastComponentType<CompType>(mEntityIdComponents[entityId]);
+        ComponentTypeId componentTypeId = GetComponentTypeId<CompType>();
+        EntityIdComponentTypeKeyType key = {entityId, componentTypeId};
+        return ComponentManager::StaticCastComponentType<CompType>(mEntityIdComponents[key]);
     }
 
     template <typename CompType>
     inline ComponentTypeId GetComponentTypeId() const {
-        static ComponentTypeId _unique_id = reinterpret_cast<ComponentTypeId>(typeid(CompType).name());
+        static ComponentTypeId _unique_id = typeid(CompType).hash_code();
         return _unique_id;
     }
 
@@ -104,28 +112,27 @@ public:
 
 private:
 
-    std::set<std::type_index> mComponentPoolExistantSet;
-    std::map<std::type_index, PoolAllocator* > mComponentPools;
-    std::map<EntityId, ComponentTypeId > mEntityIdComponentsTypeId;
-    std::map<EntityId, std::shared_ptr<BaseComponent> > mEntityIdComponents;
+    std::set<ComponentTypeId> mComponentPoolExistantSet;
+    std::map<ComponentTypeId, PoolAllocator* > mComponentPools;
+    std::map<EntityId, ComponentTypeId> mEntityIdComponentsTypeId;
+    std::map<EntityIdComponentTypeKeyType, std::shared_ptr<BaseComponent> > mEntityIdComponents;
     std::map<ComponentTypeId, std::set<EntityId> > mComponentTypeIdEntitys;
     
     PoolFactory* mPoolFactory;
 
     template <typename CompType>
     PoolAllocator* GetRightPoolAllocator() {
-        //ComponentTypeId componentTypeId = GetComponentTypeId<CompType>();
         
-        auto componentTypeIndex = std::type_index(typeid(CompType));
+        ComponentTypeId componentTypeId = GetComponentTypeId<CompType>();
 
-        if (IsComponentPoolNotExistent(componentTypeIndex)) {
-            mComponentPools[componentTypeIndex] = mPoolFactory->createPool<CompType>(128);
-            mComponentPoolExistantSet.insert(componentTypeIndex);
+        if (IsComponentPoolNotExistent(componentTypeId)) {
+            mComponentPools[componentTypeId] = mPoolFactory->createPool<CompType>(128);
+            mComponentPoolExistantSet.insert(componentTypeId);
         }
-        return mComponentPools[componentTypeIndex];
+        return mComponentPools[componentTypeId];
     }
 
-    bool IsComponentPoolNotExistent(std::type_index componentTypeId) {
+    bool IsComponentPoolNotExistent(ComponentTypeId componentTypeId) {
         return mComponentPoolExistantSet.count(componentTypeId) <= 0;
     }
 };
