@@ -45,7 +45,7 @@ public:
         EntityIdComponentTypeKeyType key = {entityId, componentTypeId};
         mEntityIdComponents[key] = component;
         mComponentTypeIdEntitys[componentTypeId].insert(entityId);
-        mEntityIdComponentsTypeId[entityId] = componentTypeId;
+        mEntityIdComponentsTypeId[entityId].push_back(componentTypeId);
         
         return ComponentManager::StaticCastComponentType<CompType>(component);
     }
@@ -66,7 +66,7 @@ public:
         EntityIdComponentTypeKeyType key = {entityId, componentTypeId};
         mEntityIdComponents[key] = component;
         mComponentTypeIdEntitys[componentTypeId].insert(entityId);
-        mEntityIdComponentsTypeId[entityId] = componentTypeId;
+        mEntityIdComponentsTypeId[entityId].push_back(componentTypeId);
         
         return ComponentManager::StaticCastComponentType<CompType>(component);
     }
@@ -76,10 +76,12 @@ public:
         SCOPED_LOCK;
 
         // get the iterators and delete
-        ComponentTypeId componentTypeId = mEntityIdComponentsTypeId[entityId];
-        EntityIdComponentTypeKeyType key = {entityId, componentTypeId};
-        mComponentTypeIdEntitys[componentTypeId].erase(entityId);
-        mEntityIdComponents.erase(key);
+        for (ComponentTypeId componentTypeId : mEntityIdComponentsTypeId[entityId]) {
+            mComponentTypeIdEntitys.erase(componentTypeId);
+            mEntityIdComponents.erase({entityId, componentTypeId});
+        }
+
+        mEntityIdComponentsTypeId.erase(entityId);
     }    
 
     template <typename CompType>
@@ -111,10 +113,8 @@ public:
     }
 
 private:
-
-    std::set<ComponentTypeId> mComponentPoolExistantSet;
     std::map<ComponentTypeId, PoolAllocator* > mComponentPools;
-    std::map<EntityId, ComponentTypeId> mEntityIdComponentsTypeId;
+    std::map<EntityId, std::vector<ComponentTypeId> > mEntityIdComponentsTypeId;
     std::map<EntityIdComponentTypeKeyType, std::shared_ptr<BaseComponent> > mEntityIdComponents;
     std::map<ComponentTypeId, std::set<EntityId> > mComponentTypeIdEntitys;
     
@@ -127,12 +127,11 @@ private:
 
         if (IsComponentPoolNotExistent(componentTypeId)) {
             mComponentPools[componentTypeId] = mPoolFactory->createPool<CompType>(128);
-            mComponentPoolExistantSet.insert(componentTypeId);
         }
         return mComponentPools[componentTypeId];
     }
 
     bool IsComponentPoolNotExistent(ComponentTypeId componentTypeId) {
-        return mComponentPoolExistantSet.count(componentTypeId) <= 0;
+        return mComponentPools.count(componentTypeId) <= 0;
     }
 };

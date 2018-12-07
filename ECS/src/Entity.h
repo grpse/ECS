@@ -16,6 +16,8 @@ public:
     EntityManager* mEntityManager;
     
     EntityId id() const { return mId; }
+    
+    inline void destroy();
 
     template <typename CompType, typename... TypeArgs>
     inline CompType* AttachComponent(TypeArgs&&... args);
@@ -66,6 +68,7 @@ public:
         
         SCOPED_LOCK;
         mEntities.erase(entityId);
+        mComponentManager->DetachFromEntity(entityId);
     }
 
     template <typename CompType, typename... TypeArgs>
@@ -98,4 +101,8 @@ inline CompType* Entity::AttachComponent() {
 template <typename CompType>
 inline CompType* Entity::GetComponent() {
     return mEntityManager->GetComponent<CompType>(mId);
+}
+
+inline void Entity::destroy() {
+    mEntityManager->Remove(id());
 }
