@@ -11,9 +11,16 @@ class EntityManager;
 
 class Entity {
 
-public:
+private:
     EntityId mId;
     EntityManager* mEntityManager;
+
+public:
+    Entity() { }
+    Entity(EntityId id, EntityManager* manager);
+    Entity(const Entity&) = default;
+
+    virtual ~Entity() { }
     
     EntityId id() const { return mId; }
     
@@ -27,11 +34,6 @@ public:
 
     template <typename CompType>
     inline CompType* GetComponent();
-
-private:
-
-
-    friend class EntityManager;
 };
 
 
@@ -60,15 +62,18 @@ public:
         SCOPED_LOCK;
 
         EntityId currentId = ++nextId;
-        mEntities[currentId] = { currentId, this };
+        mEntities.insert(std::make_pair(currentId, Entity(currentId, this)));
         return &mEntities[currentId];
     }
 
     inline void Remove(EntityId entityId) {
         
         SCOPED_LOCK;
-        mEntities.erase(entityId);
-        mComponentManager->DetachFromEntity(entityId);
+
+        if (mEntities.count(entityId) > 0) {
+            mEntities.erase(entityId);
+            mComponentManager->DetachFromEntity(entityId);
+        }
     }
 
     template <typename CompType, typename... TypeArgs>
@@ -88,6 +93,15 @@ public:
 };
 
 
+Entity::Entity(EntityId id, EntityManager* manager) {
+    mId = id;
+    mEntityManager = manager;
+}
+
+inline void Entity::destroy() {
+    mEntityManager->Remove(id());
+}
+
 template <typename CompType, typename... TypeArgs>
 inline CompType* Entity::AttachComponent(TypeArgs&&... args) {
     return mEntityManager->AttachComponent<CompType>(mId, std::forward<TypeArgs>(args)...);
@@ -101,8 +115,4 @@ inline CompType* Entity::AttachComponent() {
 template <typename CompType>
 inline CompType* Entity::GetComponent() {
     return mEntityManager->GetComponent<CompType>(mId);
-}
-
-inline void Entity::destroy() {
-    mEntityManager->Remove(id());
 }
